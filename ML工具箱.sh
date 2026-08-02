@@ -6,7 +6,7 @@
 # ---------- 版本信息 ----------
 VERSION="1.0"
 SCRIPT_NAME="ML"
-GITHUB_RAW_URL="https://gh.kejilion.pro/https://github.com/mvxffd/shell/raw/refs/heads/main/LM%E5%B7%A5%E5%85%B7%E7%AE%B1.sh"
+GITHUB_RAW_URL="https://github.com/mvxffd/ML-/raw/refs/heads/main/ML%E5%B7%A5%E5%85%B7%E7%AE%B1.sh"
 GH_PROXY="https://gh.kejilion.pro/"
 
 # ========== 卡密配置 ==========
