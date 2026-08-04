@@ -1,12 +1,13 @@
+
 #!/system/bin/sh
 # ==================================================
 #  简约风格（后续内容完全不变）
 # ==================================================
 
 # ---------- 版本信息 ----------
-VERSION="1.1"
+VERSION="1.2"
 SCRIPT_NAME="ML"
-GITHUB_RAW_URL="https://github.com/mvxffd/ML-/raw/refs/heads/main/ML%E5%B7%A5%E5%85%B7%E7%AE%B1.sh"
+GITHUB_RAW_URL="https://gh.kejilion.pro/https://github.com/mvxffd/ML-/raw/refs/heads/main/ML%E5%B7%A5%E5%85%B7%E7%AE%B1.sh"
 GH_PROXY="https://gh.kejilion.pro/"
 
 # ========== 卡密配置 ==========
@@ -115,11 +116,10 @@ verify_license() {
     fi
 }
 
-# ========== 脚本更新相关函数（从LM工具箱复制） ==========
+# ========== 脚本更新相关函数 ==========
 
-# 获取脚本真实路径（优先使用保存的真实路径）
+# 获取脚本真实路径
 get_script_path() {
-    # 如果存在保存的真实路径，直接返回
     if [ -n "$_REAL_SCRIPT_PATH" ] && [ -f "$_REAL_SCRIPT_PATH" ]; then
         echo "$_REAL_SCRIPT_PATH"
         return 0
@@ -147,7 +147,6 @@ get_script_path() {
 get_latest_version() {
     local url="$1"
     local version=""
-    # 尝试从 GitHub 获取版本号
     version=$(curl -s --max-time 10 "$url" 2>/dev/null | grep -o 'VERSION="[0-9.]*"' | head -1 | cut -d '"' -f 2)
     if [ -z "$version" ]; then
         version=$(curl -s --max-time 10 "$url" 2>/dev/null | grep -o 'SCRIPT_VERSION="[0-9.]*"' | head -1 | cut -d '"' -f 2)
@@ -155,7 +154,7 @@ get_latest_version() {
     echo "$version"
 }
 
-# 检测地区（判断是否使用代理）
+# 检测地区
 detect_region() {
     local country=$(curl -s --max-time 3 ipinfo.io/country 2>/dev/null)
     case "$country" in
@@ -170,7 +169,6 @@ check_update() {
     local current_version="$2"
     local download_url="$script_url"
     
-    # 如果 GH_PROXY 不为空，且 script_url 不包含代理前缀，则添加代理
     if [ -n "$GH_PROXY" ] && [[ ! "$script_url" =~ ^https?://gh\.kejilion\.pro/ ]]; then
         download_url="${GH_PROXY}${script_url#https://}"
     fi
@@ -202,7 +200,6 @@ do_update() {
     local script_path="$2"
     local download_url="$script_url"
     
-    # 如果 GH_PROXY 不为空，且 script_url 不包含代理前缀，则添加代理
     if [ -n "$GH_PROXY" ] && [[ ! "$script_url" =~ ^https?://gh\.kejilion\.pro/ ]]; then
         download_url="${GH_PROXY}${script_url#https://}"
     fi
@@ -210,36 +207,30 @@ do_update() {
     echo -e " ${fg_cyan}正在下载更新...${reset}"
     echo -e " ${fg_gray}下载地址: ${fg_white}$download_url${reset}"
     
-    # 备份当前脚本
     if [ -f "$script_path" ]; then
         cp -f "$script_path" "${script_path}.bak" 2>/dev/null
         echo -e " ${fg_gray}已备份当前版本${reset}"
     fi
     
-    # 下载到临时文件
     local tmp_file="/data/local/tmp/${SCRIPT_NAME}_update.sh"
     if curl -sS --max-time 60 --fail -o "$tmp_file" "$download_url" 2>/dev/null; then
-        # 校验文件
         if [ ! -s "$tmp_file" ]; then
             echo -e " ${fg_red}❌ 下载的文件为空${reset}"
             rm -f "$tmp_file"
             return 1
         fi
         
-        # 检查是否为有效的 shell 脚本
         if ! head -1 "$tmp_file" | grep -qE '^#!.*sh'; then
             echo -e " ${fg_red}❌ 下载的文件不是有效的脚本${reset}"
             rm -f "$tmp_file"
             return 1
         fi
         
-        # 替换脚本
         chmod 755 "$tmp_file"
         mv -f "$tmp_file" "$script_path"
         
         echo -e " ${fg_green}✅ 脚本更新完成！${reset}"
         
-        # 提取并显示新版本号
         local new_version=$(grep -o 'VERSION="[0-9.]*"' "$script_path" | head -1 | cut -d '"' -f 2)
         if [ -z "$new_version" ]; then
             new_version=$(grep -o 'SCRIPT_VERSION="[0-9.]*"' "$script_path" | head -1 | cut -d '"' -f 2)
@@ -251,7 +242,6 @@ do_update() {
         return 0
     else
         echo -e " ${fg_red}❌ 下载失败！${reset}"
-        # 恢复备份
         if [ -f "${script_path}.bak" ]; then
             mv -f "${script_path}.bak" "$script_path"
             echo -e " ${fg_gray}已恢复备份版本${reset}"
@@ -261,13 +251,12 @@ do_update() {
     fi
 }
 
-# 检查 crontab（Android/Termux 环境适配）
+# 检查 crontab
 check_cron() {
     if command -v crond >/dev/null 2>&1 || command -v cron >/dev/null 2>&1; then
         return 0
     fi
     if [ -d "/data/data/com.termux" ]; then
-        # Termux 环境使用 .cron 或 termux-job-scheduler
         if command -v termux-job-scheduler >/dev/null 2>&1; then
             return 0
         fi
@@ -283,7 +272,6 @@ enable_auto_update() {
     
     echo -e " ${fg_cyan}正在开启自动更新...${reset}"
     
-    # 构建更新命令 - 同样判断是否需要添加代理
     local download_url="$script_url"
     if [ -n "$GH_PROXY" ] && [[ ! "$script_url" =~ ^https?://gh\.kejilion\.pro/ ]]; then
         download_url="${GH_PROXY}${script_url#https://}"
@@ -291,9 +279,7 @@ enable_auto_update() {
     
     local update_cmd="curl -sS --max-time 60 --fail -o /data/local/tmp/${script_name}_update.sh $download_url && [ -s /data/local/tmp/${script_name}_update.sh ] && head -1 /data/local/tmp/${script_name}_update.sh | grep -q '^#!.*sh' && cp -f $script_path ${script_path}.bak 2>/dev/null && chmod 755 /data/local/tmp/${script_name}_update.sh && mv -f /data/local/tmp/${script_name}_update.sh $script_path && rm -f /data/local/tmp/${script_name}_update.sh"
     
-    # 尝试不同的定时任务方式
     if command -v crond >/dev/null 2>&1 && [ -f /etc/crontab ]; then
-        # 标准 crond
         if ! grep -q "$script_name" /etc/crontab 2>/dev/null; then
             echo "0 2 * * * root $update_cmd" >> /etc/crontab
             if command -v systemctl >/dev/null 2>&1; then
@@ -302,7 +288,6 @@ enable_auto_update() {
         fi
         echo -e " ${fg_green}✅ 自动更新已开启（每天凌晨2点）${reset}"
     elif [ -d "/data/data/com.termux" ] && command -v termux-job-scheduler >/dev/null 2>&1; then
-        # Termux 环境使用 job-scheduler
         termux-job-scheduler -d "2:00" -c "$update_cmd" 2>/dev/null
         echo -e " ${fg_green}✅ 自动更新已开启（每天凌晨2点）${reset}"
     else
@@ -323,7 +308,6 @@ disable_auto_update() {
         fi
         echo -e " ${fg_green}✅ 自动更新已关闭${reset}"
     elif command -v termux-job-scheduler >/dev/null 2>&1; then
-        # Termux 环境取消所有调度
         termux-job-scheduler -u 2>/dev/null
         echo -e " ${fg_green}✅ 自动更新已关闭${reset}"
     else
@@ -348,7 +332,7 @@ draw_menu() {
     echo ""
     echo -e "  ${fg_gray}▸ 1${reset}  欧美大片"
     echo -e "  ${fg_gray}▸ 2${reset}  设备系统信息"
-    echo -e "  ${fg_gray}▸ 3${reset}  PNG批量复制"
+    echo -e "  ${fg_gray}▸ 3${reset}  PNG指定数量复制"
     echo -e "  ${fg_gray}▸ 4${reset}  脚本更新"
     echo -e "  ${fg_gray}▸ 5${reset}  mt、ksu链接"
     echo -e "  ${fg_gray}▸ 6${reset}  批量创建文件等"
@@ -405,21 +389,18 @@ menu_device_info() {
     
     log "【设备信息】开始执行"
     
-    # 内核版本
     echo -e " ${fg_cyan}${bold}◈ 内核版本${reset}"
     local kernel=$(uname -r 2>/dev/null || echo "读取失败")
     echo -e " ${fg_white}  $kernel${reset}"
     log "【设备信息】内核版本: $kernel"
     echo ""
     
-    # 设备硬件型号
     echo -e " ${fg_cyan}${bold}◈ 设备硬件型号${reset}"
     local model=$(get_prop ro.product.model "未知")
     echo -e " ${fg_white}  $model${reset}"
     log "【设备信息】设备型号: $model"
     echo ""
     
-    # 自定义设备名称
     echo -e " ${fg_cyan}${bold}◈ 自定义设备名称${reset}"
     local dev_name=$(settings get global device_name 2>/dev/null)
     local prop_dev=$(get_prop persist.sys.device_name "")
@@ -439,7 +420,6 @@ menu_device_info() {
     fi
     echo ""
     
-    # 开发者模式状态
     echo -e " ${fg_cyan}${bold}◈ 开发者模式状态${reset}"
     local dev_sw=$(settings get global development_settings_enabled 2>/dev/null)
     local usb_debug=$(settings get global adb_enabled 2>/dev/null)
@@ -459,7 +439,6 @@ menu_device_info() {
     fi
     echo ""
     
-    # 处理器
     echo -e " ${fg_cyan}${bold}◈ 处理器${reset}"
     local soc_name=$(get_prop ro.soc.model "")
     local cpu_plat=$(get_prop ro.board.platform "")
@@ -523,7 +502,6 @@ menu_device_info() {
     [ -n "$cpu_cores" ] && [ "$cpu_cores" -gt 0 ] && echo -e " ${fg_white}  核心数：${cpu_cores} 核${reset}" && log "【设备信息】核心数: ${cpu_cores} 核"
     echo ""
     
-    # 软件版本
     echo -e " ${fg_cyan}${bold}◈ 软件版本${reset}"
     local zux1=$(get_prop ro.zuxos.version "")
     local zux2=$(get_prop ro.build.zuxos.version "")
@@ -541,14 +519,12 @@ menu_device_info() {
     [ "$has_os" = false ] && echo -e " ${fg_gray}  无定制系统版本信息${reset}" && log "【设备信息】无定制系统版本信息"
     echo ""
     
-    # 底层Android版本
     echo -e " ${fg_cyan}${bold}◈ Android版本${reset}"
     local and_ver=$(get_prop ro.build.version.release "未知")
     echo -e " ${fg_white}  $and_ver${reset}"
     log "【设备信息】Android版本: $and_ver"
     echo ""
     
-    # 设备序列号
     echo -e " ${fg_cyan}${bold}◈ 设备序列号${reset}"
     local serial=$(getprop ro.serialno 2>/dev/null)
     if [ -n "$serial" ] && [ "$serial" != "unknown" ]; then
@@ -574,11 +550,11 @@ menu_png_batch() {
     clear
     echo -e "\n${accent_blue}◆ PNG指定数量复制工具${reset}\n"
     echo -e "${fg_gray}  ─────────────────────────────────────────${reset}"
-                                                                                   #只能放一张进去
+    
     local SRC_DIR="/storage/emulated/0/PNG存放地"
-    local TARGET_DIR="/storage/emulated/0/png批量复制工具"
-    local NAME_LIST="0y 1S 5Q 7c _e C9 CG D2 Et jy kb Mb SD tf u3"    #这里可以随便改名称
-    local total_count=15                        #这里改数量。名称多少个，数量就多少个
+    local TARGET_DIR="/storage/emulated/0/PNG批量复制"
+    local NAME_LIST="0y 1S 5Q 7c _e C9 CG D2 Et jy kb Mb SD tf u3"
+    local total_count=15
     local copy_success=0
     local copy_failed=0
     local PNG_FOUND=""
@@ -590,7 +566,6 @@ menu_png_batch() {
     echo -e " ${fg_yellow}💡 复制失败请先执行: su setenforce 0${reset}"
     echo ""
     
-    # ========== 检查并创建PNG存放地文件夹 ==========
     if [ ! -d "$SRC_DIR" ]; then
         echo -e " ${fg_yellow}⚠️  源目录不存在: $SRC_DIR${reset}"
         echo -e " ${fg_cyan}🔧 正在自动创建目录...${reset}"
@@ -609,7 +584,6 @@ menu_png_batch() {
         fi
     fi
     
-    # 检查源目录
     if [ ! -d "$SRC_DIR" ]; then
         echo -e " ${fg_red}✗ 源目录不存在: $SRC_DIR${reset}"
         echo -e " ${fg_yellow}💡 请在手机内部存储检查是否有PNG照片  并放入PNG图片${reset}"
@@ -619,7 +593,6 @@ menu_png_batch() {
     fi
     echo -e " ${fg_cyan}🔍 正在扫描源目录...${reset}"
     
-    # 查找PNG文件
     PNG_FOUND=$(find "$SRC_DIR" -maxdepth 1 -type f \( -iname "*.png" -o -iname "*.PNG" \) 2>/dev/null | head -n1)
     if [ -z "$PNG_FOUND" ]; then
         echo -e " ${fg_yellow}⚠️  当前目录未找到PNG，尝试递归搜索子目录...${reset}"
@@ -634,7 +607,6 @@ menu_png_batch() {
         return 1
     fi
     
-    # 获取文件信息
     local FILE_SIZE=""
     if stat -c%s "$PNG_FOUND" >/dev/null 2>&1; then 
         FILE_SIZE=$(stat -c%s "$PNG_FOUND")
@@ -650,7 +622,6 @@ menu_png_batch() {
     [ -n "$FILE_SIZE" ] && echo -e " ${fg_cyan}📦 文件大小: ${fg_white}$(format_size "$FILE_SIZE")${reset}"
     echo -e " ${fg_yellow}📂 目标目录: ${fg_white}$TARGET_DIR${reset}"
     
-    # 检查目标目录已有文件
     if [ -d "$TARGET_DIR" ]; then
         local existing_count=$(find "$TARGET_DIR" -maxdepth 1 -type f -iname "*.png" 2>/dev/null | wc -l)
         [ "$existing_count" -gt 0 ] && echo -e " ${fg_yellow}⚠️  目标目录已有 $existing_count 个PNG文件${reset}"
@@ -713,7 +684,6 @@ menu_update() {
     echo -e "\n${accent_blue}◆ 脚本更新${reset}\n"
     echo -e "${fg_gray}  ─────────────────────────────────────────${reset}"
     
-    # 获取脚本路径
     local script_path=$(get_script_path)
     if [ -z "$script_path" ] || [ ! -f "$script_path" ]; then
         echo -e " ${fg_red}❌ 无法获取脚本路径${reset}"
@@ -725,7 +695,6 @@ menu_update() {
     echo -e " ${fg_gray}脚本路径: ${fg_white}$script_path${reset}"
     echo -e "${fg_gray}  ─────────────────────────────────────────${reset}"
     
-    # 检查更新
     check_update "$GITHUB_RAW_URL" "$VERSION"
     local update_status=$?
     
@@ -784,35 +753,138 @@ menu_open_browser_link() {
     
     log "【子菜单】打开链接: $TARGET_URL"
     
-    # 优先检查 Via 浏览器
-    if pm list packages 2>/dev/null | grep -q "mark.via"; then
+    if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "mark.via"; then
         log "【子菜单】检测到 Via 浏览器"
-        # 尝试用 Via 打开
-        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n mark.via/.MainActivity >/dev/null 2>&1
+        am start -a android.intent.action.VIEW -d "$TARGET_URL" -p mark.via >/dev/null 2>&1
         if [ $? -eq 0 ]; then
             opened=1
             log "【子菜单】Via 浏览器打开成功"
         else
-            # 若失败，尝试用包名方式（不指定 Activity）
-            am start -a android.intent.action.VIEW -d "$TARGET_URL" -p mark.via >/dev/null 2>&1
-            [ $? -eq 0 ] && opened=1 && log "【子菜单】Via 浏览器(包名方式)打开成功"
+            am start -a android.intent.action.VIEW -d "$TARGET_URL" -n mark.via/.MainActivity >/dev/null 2>&1
+            [ $? -eq 0 ] && opened=1 && log "【子菜单】Via 浏览器(备用)打开成功"
         fi
     fi
     
-    # 如果 Via 未打开，检查 OPPO 浏览器
+    if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.tencent.mtt"; then
+        log "【子菜单】检测到 QQ 浏览器"
+        am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.tencent.mtt >/dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            opened=1
+            log "【子菜单】QQ 浏览器打开成功"
+        else
+            am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.tencent.mtt/.MainActivity >/dev/null 2>&1
+            [ $? -eq 0 ] && opened=1 && log "【子菜单】QQ 浏览器(备用)打开成功"
+        fi
+    fi
+    
+    if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.baidu.searchbox.lite"; then
+        log "【子菜单】检测到百度极速版"
+        am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.baidu.searchbox.lite >/dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            opened=1
+            log "【子菜单】百度极速版打开成功"
+        else
+            am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.baidu.searchbox.lite/.MainActivity >/dev/null 2>&1
+            [ $? -eq 0 ] && opened=1 && log "【子菜单】百度极速版(备用)打开成功"
+        fi
+    fi
+    
+    if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.baidu.searchbox"; then
+        log "【子菜单】检测到百度浏览器"
+        am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.baidu.searchbox >/dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            opened=1
+            log "【子菜单】百度浏览器打开成功"
+        else
+            am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.baidu.searchbox/.MainActivity >/dev/null 2>&1
+            [ $? -eq 0 ] && opened=1 && log "【子菜单】百度浏览器(备用)打开成功"
+        fi
+    fi
+    
+    if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.cat.readall"; then
+        log "【子菜单】检测到悟空浏览器"
+        am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.cat.readall >/dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            opened=1
+            log "【子菜单】悟空浏览器打开成功"
+        else
+            am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.cat.readall/.MainActivity >/dev/null 2>&1
+            [ $? -eq 0 ] && opened=1 && log "【子菜单】悟空浏览器(备用)打开成功"
+        fi
+    fi
+    
+    if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "org.mozilla.firefox"; then
+        log "【子菜单】检测到 Firefox"
+        am start -a android.intent.action.VIEW -d "$TARGET_URL" -p org.mozilla.firefox >/dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            opened=1
+            log "【子菜单】Firefox 打开成功"
+        else
+            am start -a android.intent.action.VIEW -d "$TARGET_URL" -n org.mozilla.firefox/.App >/dev/null 2>&1
+            [ $? -eq 0 ] && opened=1 && log "【子菜单】Firefox(备用)打开成功"
+        fi
+    fi
+    
+    if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.microsoft.emmx"; then
+        log "【子菜单】检测到 Microsoft Edge"
+        am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.microsoft.emmx >/dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            opened=1
+            log "【子菜单】Microsoft Edge 打开成功"
+        else
+            am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.microsoft.emmx/.MainActivity >/dev/null 2>&1
+            [ $? -eq 0 ] && opened=1 && log "【子菜单】Microsoft Edge(备用)打开成功"
+        fi
+    fi
+    
+    if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.UCMobile"; then
+        log "【子菜单】检测到 UC 浏览器"
+        am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.UCMobile >/dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            opened=1
+            log "【子菜单】UC 浏览器打开成功"
+        else
+            am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.UCMobile/.main.UCMobile >/dev/null 2>&1
+            [ $? -eq 0 ] && opened=1 && log "【子菜单】UC 浏览器(备用)打开成功"
+        fi
+    fi
+    
+    if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.mmbox.xbrowser.pro"; then
+        log "【子菜单】检测到 X 浏览器专业版"
+        am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.mmbox.xbrowser.pro >/dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            opened=1
+            log "【子菜单】X 浏览器专业版打开成功"
+        else
+            am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.mmbox.xbrowser.pro/.MainActivity >/dev/null 2>&1
+            [ $? -eq 0 ] && opened=1 && log "【子菜单】X 浏览器专业版(备用)打开成功"
+        fi
+    fi
+    
+    if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.zui.browser"; then
+        log "【子菜单】检测到 ZUI 浏览器"
+        am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.zui.browser >/dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            opened=1
+            log "【子菜单】ZUI 浏览器打开成功"
+        else
+            am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.zui.browser/.BrowserActivity >/dev/null 2>&1
+            [ $? -eq 0 ] && opened=1 && log "【子菜单】ZUI 浏览器(备用)打开成功"
+        fi
+    fi
+    
     if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.heytap.browser"; then
         log "【子菜单】检测到 OPPO 浏览器"
-        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.heytap.browser/.BrowserActivity >/dev/null 2>&1
+        am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.heytap.browser >/dev/null 2>&1
         if [ $? -eq 0 ]; then
             opened=1
             log "【子菜单】OPPO 浏览器打开成功"
         else
-            am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.heytap.browser >/dev/null 2>&1
-            [ $? -eq 0 ] && opened=1 && log "【子菜单】OPPO 浏览器(包名方式)打开成功"
+            am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.heytap.browser/.BrowserActivity >/dev/null 2>&1
+            [ $? -eq 0 ] && opened=1 && log "【子菜单】OPPO 浏览器(备用)打开成功"
         fi
     fi
     
-    # 如果都未打开，使用系统默认浏览器
     if [ $opened -eq 0 ]; then
         log "【子菜单】使用系统默认浏览器"
         am start -a android.intent.action.VIEW -d "$TARGET_URL" >/dev/null 2>&1
@@ -826,27 +898,809 @@ menu_open_browser_link() {
     wait_return
 }
 
-# 显示子菜单
+# ---------- 面具类子菜单 ----------
+menu_ksu_sub() {
+    while true; do
+        clear
+        echo -e "\n${accent_blue}◆ 内核级管理器${reset}\n"
+        echo -e "${fg_gray}  ─────────────────────────────────────────${reset}"
+        echo ""
+        echo -e "  ${fg_purple}▸ 1${reset}  🌐 Skroot(Lite)/Skroot(Pro)"
+        echo -e "  ${fg_purple}▸ 2${reset}  🌐 KernelSU"
+        echo -e "  ${fg_purple}▸ 3${reset}  🌐 SukiSU-Ultra"
+        echo -e "  ${fg_purple}▸ 4${reset}  🌐 FolkPatch"
+        echo -e "  ${fg_purple}▸ 5${reset}  🌐 APatch"
+        echo -e "  ${fg_gray}▸ 0${reset}  返回上一级"
+        echo ""
+        echo -e "${fg_gray}  ─────────────────────────────────────────${reset}"
+        echo -ne "${fg_white}  编号：${reset}"
+        
+        read key 2>/dev/null
+        case "$key" in
+            1)
+                log "【面具类子菜单】用户选择: 1 - 打开Skroot链接"
+                local TARGET_URL="http://www.skrootpro.cn/"
+                local opened=0
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "mark.via"; then
+                    log "【面具类子菜单】检测到 Via 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p mark.via >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】Via 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n mark.via/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】Via 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.tencent.mtt"; then
+                    log "【面具类子菜单】检测到 QQ 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.tencent.mtt >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】QQ 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.tencent.mtt/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】QQ 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.baidu.searchbox.lite"; then
+                    log "【面具类子菜单】检测到百度极速版"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.baidu.searchbox.lite >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】百度极速版打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.baidu.searchbox.lite/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】百度极速版(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.baidu.searchbox"; then
+                    log "【面具类子菜单】检测到百度浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.baidu.searchbox >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】百度浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.baidu.searchbox/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】百度浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.cat.readall"; then
+                    log "【面具类子菜单】检测到悟空浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.cat.readall >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】悟空浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.cat.readall/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】悟空浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "org.mozilla.firefox"; then
+                    log "【面具类子菜单】检测到 Firefox"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p org.mozilla.firefox >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】Firefox 打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n org.mozilla.firefox/.App >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】Firefox(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.microsoft.emmx"; then
+                    log "【面具类子菜单】检测到 Microsoft Edge"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.microsoft.emmx >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】Microsoft Edge 打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.microsoft.emmx/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】Microsoft Edge(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.UCMobile"; then
+                    log "【面具类子菜单】检测到 UC 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.UCMobile >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】UC 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.UCMobile/.main.UCMobile >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】UC 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.mmbox.xbrowser.pro"; then
+                    log "【面具类子菜单】检测到 X 浏览器专业版"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.mmbox.xbrowser.pro >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】X 浏览器专业版打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.mmbox.xbrowser.pro/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】X 浏览器专业版(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.zui.browser"; then
+                    log "【面具类子菜单】检测到 ZUI 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.zui.browser >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】ZUI 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.zui.browser/.BrowserActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】ZUI 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.heytap.browser"; then
+                    log "【面具类子菜单】检测到 OPPO 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.heytap.browser >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】OPPO 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.heytap.browser/.BrowserActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】OPPO 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ]; then
+                    log "【面具类子菜单】使用系统默认浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        log "【面具类子菜单】默认浏览器打开成功"
+                    else
+                        log "【面具类子菜单】所有浏览器打开失败"
+                    fi
+                fi
+                
+                echo -e "\n${fg_gray}已尝试打开链接，按回车返回${reset}"
+                read -r
+                ;;
+            2)
+                log "【面具类子菜单】用户选择: 2 - 打开ksu链接"
+                local TARGET_URL="https://kernelsu.org/zh_CN/"
+                local opened=0
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "mark.via"; then
+                    log "【面具类子菜单】检测到 Via 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p mark.via >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】Via 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n mark.via/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】Via 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.tencent.mtt"; then
+                    log "【面具类子菜单】检测到 QQ 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.tencent.mtt >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】QQ 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.tencent.mtt/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】QQ 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.baidu.searchbox.lite"; then
+                    log "【面具类子菜单】检测到百度极速版"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.baidu.searchbox.lite >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】百度极速版打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.baidu.searchbox.lite/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】百度极速版(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.baidu.searchbox"; then
+                    log "【面具类子菜单】检测到百度浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.baidu.searchbox >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】百度浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.baidu.searchbox/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】百度浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.cat.readall"; then
+                    log "【面具类子菜单】检测到悟空浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.cat.readall >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】悟空浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.cat.readall/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】悟空浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "org.mozilla.firefox"; then
+                    log "【面具类子菜单】检测到 Firefox"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p org.mozilla.firefox >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】Firefox 打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n org.mozilla.firefox/.App >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】Firefox(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.microsoft.emmx"; then
+                    log "【面具类子菜单】检测到 Microsoft Edge"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.microsoft.emmx >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】Microsoft Edge 打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.microsoft.emmx/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】Microsoft Edge(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.UCMobile"; then
+                    log "【面具类子菜单】检测到 UC 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.UCMobile >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】UC 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.UCMobile/.main.UCMobile >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】UC 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.mmbox.xbrowser.pro"; then
+                    log "【面具类子菜单】检测到 X 浏览器专业版"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.mmbox.xbrowser.pro >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】X 浏览器专业版打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.mmbox.xbrowser.pro/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】X 浏览器专业版(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.zui.browser"; then
+                    log "【面具类子菜单】检测到 ZUI 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.zui.browser >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】ZUI 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.zui.browser/.BrowserActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】ZUI 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.heytap.browser"; then
+                    log "【面具类子菜单】检测到 OPPO 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.heytap.browser >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】OPPO 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.heytap.browser/.BrowserActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】OPPO 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ]; then
+                    log "【面具类子菜单】使用系统默认浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        log "【面具类子菜单】默认浏览器打开成功"
+                    else
+                        log "【面具类子菜单】所有浏览器打开失败"
+                    fi
+                fi
+                
+                echo -e "\n${fg_gray}已尝试打开链接，按回车返回${reset}"
+                read -r
+                ;;
+            3)
+                log "【面具类子菜单】用户选择: 3 - 打开SukiSU-Ultra链接"
+                local TARGET_URL="https://github.com/SukiSU-Ultra/SukiSU-Ultra"
+                local opened=0
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "mark.via"; then
+                    log "【面具类子菜单】检测到 Via 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p mark.via >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】Via 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n mark.via/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】Via 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.tencent.mtt"; then
+                    log "【面具类子菜单】检测到 QQ 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.tencent.mtt >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】QQ 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.tencent.mtt/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】QQ 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.baidu.searchbox.lite"; then
+                    log "【面具类子菜单】检测到百度极速版"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.baidu.searchbox.lite >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】百度极速版打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.baidu.searchbox.lite/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】百度极速版(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.baidu.searchbox"; then
+                    log "【面具类子菜单】检测到百度浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.baidu.searchbox >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】百度浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.baidu.searchbox/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】百度浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.cat.readall"; then
+                    log "【面具类子菜单】检测到悟空浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.cat.readall >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】悟空浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.cat.readall/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】悟空浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "org.mozilla.firefox"; then
+                    log "【面具类子菜单】检测到 Firefox"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p org.mozilla.firefox >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】Firefox 打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n org.mozilla.firefox/.App >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】Firefox(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.microsoft.emmx"; then
+                    log "【面具类子菜单】检测到 Microsoft Edge"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.microsoft.emmx >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】Microsoft Edge 打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.microsoft.emmx/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】Microsoft Edge(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.UCMobile"; then
+                    log "【面具类子菜单】检测到 UC 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.UCMobile >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】UC 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.UCMobile/.main.UCMobile >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】UC 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.mmbox.xbrowser.pro"; then
+                    log "【面具类子菜单】检测到 X 浏览器专业版"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.mmbox.xbrowser.pro >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】X 浏览器专业版打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.mmbox.xbrowser.pro/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】X 浏览器专业版(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.zui.browser"; then
+                    log "【面具类子菜单】检测到 ZUI 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.zui.browser >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】ZUI 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.zui.browser/.BrowserActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】ZUI 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.heytap.browser"; then
+                    log "【面具类子菜单】检测到 OPPO 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.heytap.browser >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】OPPO 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.heytap.browser/.BrowserActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】OPPO 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ]; then
+                    log "【面具类子菜单】使用系统默认浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        log "【面具类子菜单】默认浏览器打开成功"
+                    else
+                        log "【面具类子菜单】所有浏览器打开失败"
+                    fi
+                fi
+                
+                echo -e "\n${fg_gray}已尝试打开链接，按回车返回${reset}"
+                read -r
+                ;;
+            4)
+                log "【面具类子菜单】用户选择: 4 - 打开FolkPatch链接"
+                local TARGET_URL="https://github.com/LyraVoid/FolkPatch"
+                local opened=0
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "mark.via"; then
+                    log "【面具类子菜单】检测到 Via 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p mark.via >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】Via 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n mark.via/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】Via 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.tencent.mtt"; then
+                    log "【面具类子菜单】检测到 QQ 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.tencent.mtt >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】QQ 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.tencent.mtt/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】QQ 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.baidu.searchbox.lite"; then
+                    log "【面具类子菜单】检测到百度极速版"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.baidu.searchbox.lite >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】百度极速版打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.baidu.searchbox.lite/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】百度极速版(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.baidu.searchbox"; then
+                    log "【面具类子菜单】检测到百度浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.baidu.searchbox >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】百度浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.baidu.searchbox/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】百度浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.cat.readall"; then
+                    log "【面具类子菜单】检测到悟空浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.cat.readall >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】悟空浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.cat.readall/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】悟空浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "org.mozilla.firefox"; then
+                    log "【面具类子菜单】检测到 Firefox"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p org.mozilla.firefox >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】Firefox 打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n org.mozilla.firefox/.App >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】Firefox(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.microsoft.emmx"; then
+                    log "【面具类子菜单】检测到 Microsoft Edge"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.microsoft.emmx >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】Microsoft Edge 打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.microsoft.emmx/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】Microsoft Edge(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.UCMobile"; then
+                    log "【面具类子菜单】检测到 UC 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.UCMobile >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】UC 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.UCMobile/.main.UCMobile >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】UC 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.mmbox.xbrowser.pro"; then
+                    log "【面具类子菜单】检测到 X 浏览器专业版"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.mmbox.xbrowser.pro >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】X 浏览器专业版打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.mmbox.xbrowser.pro/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】X 浏览器专业版(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.zui.browser"; then
+                    log "【面具类子菜单】检测到 ZUI 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.zui.browser >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】ZUI 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.zui.browser/.BrowserActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】ZUI 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.heytap.browser"; then
+                    log "【面具类子菜单】检测到 OPPO 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.heytap.browser >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】OPPO 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.heytap.browser/.BrowserActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】OPPO 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ]; then
+                    log "【面具类子菜单】使用系统默认浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        log "【面具类子菜单】默认浏览器打开成功"
+                    else
+                        log "【面具类子菜单】所有浏览器打开失败"
+                    fi
+                fi
+                
+                echo -e "\n${fg_gray}已尝试打开链接，按回车返回${reset}"
+                read -r
+                ;;
+            5)
+                log "【面具类子菜单】用户选择: 5 - 打开APatch链接"
+                local TARGET_URL="https://github.com/bmax121/APatch"
+                local opened=0
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "mark.via"; then
+                    log "【面具类子菜单】检测到 Via 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p mark.via >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】Via 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n mark.via/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】Via 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.tencent.mtt"; then
+                    log "【面具类子菜单】检测到 QQ 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.tencent.mtt >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】QQ 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.tencent.mtt/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】QQ 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.baidu.searchbox.lite"; then
+                    log "【面具类子菜单】检测到百度极速版"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.baidu.searchbox.lite >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】百度极速版打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.baidu.searchbox.lite/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】百度极速版(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.baidu.searchbox"; then
+                    log "【面具类子菜单】检测到百度浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.baidu.searchbox >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】百度浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.baidu.searchbox/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】百度浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.cat.readall"; then
+                    log "【面具类子菜单】检测到悟空浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.cat.readall >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】悟空浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.cat.readall/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】悟空浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "org.mozilla.firefox"; then
+                    log "【面具类子菜单】检测到 Firefox"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p org.mozilla.firefox >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】Firefox 打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n org.mozilla.firefox/.App >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】Firefox(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.microsoft.emmx"; then
+                    log "【面具类子菜单】检测到 Microsoft Edge"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.microsoft.emmx >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】Microsoft Edge 打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.microsoft.emmx/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】Microsoft Edge(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.UCMobile"; then
+                    log "【面具类子菜单】检测到 UC 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.UCMobile >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】UC 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.UCMobile/.main.UCMobile >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】UC 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.mmbox.xbrowser.pro"; then
+                    log "【面具类子菜单】检测到 X 浏览器专业版"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.mmbox.xbrowser.pro >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】X 浏览器专业版打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.mmbox.xbrowser.pro/.MainActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】X 浏览器专业版(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.zui.browser"; then
+                    log "【面具类子菜单】检测到 ZUI 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.zui.browser >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】ZUI 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.zui.browser/.BrowserActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】ZUI 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ] && pm list packages 2>/dev/null | grep -q "com.heytap.browser"; then
+                    log "【面具类子菜单】检测到 OPPO 浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" -p com.heytap.browser >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        opened=1
+                        log "【面具类子菜单】OPPO 浏览器打开成功"
+                    else
+                        am start -a android.intent.action.VIEW -d "$TARGET_URL" -n com.heytap.browser/.BrowserActivity >/dev/null 2>&1
+                        [ $? -eq 0 ] && opened=1 && log "【面具类子菜单】OPPO 浏览器(备用)打开成功"
+                    fi
+                fi
+                
+                if [ $opened -eq 0 ]; then
+                    log "【面具类子菜单】使用系统默认浏览器"
+                    am start -a android.intent.action.VIEW -d "$TARGET_URL" >/dev/null 2>&1
+                    if [ $? -eq 0 ]; then
+                        log "【面具类子菜单】默认浏览器打开成功"
+                    else
+                        log "【面具类子菜单】所有浏览器打开失败"
+                    fi
+                fi
+                
+                echo -e "\n${fg_gray}已尝试打开链接，按回车返回${reset}"
+                read -r
+                ;;
+            0)
+                log "【面具类子菜单】用户选择: 0 - 返回"
+                return 0
+                ;;
+            *)
+                if [ -n "$key" ]; then
+                    echo -e "\n${fg_red}输入错误，请重新选择！${reset}"
+                    sleep 1
+                fi
+                ;;
+        esac
+    done
+}
+
+# ---------- 显示官方链接子菜单 ----------
 show_sub_menu() {
     clear
     echo -e "\n${accent_blue}◆ 官方链接${reset}\n"
-    echo -e "${fg_gray}  ─────────────────────────────────────────${reset}"
+    echo -e "${fg_gray}  ─────────────────────────────────────────────────────${reset}"
     echo -e "  ${fg_purple}不是很多，但后续还会加${reset}"
     echo ""
-    echo -e "  ${fg_purple}▸ 1${reset}  🌐 MT管理器官方链接"                     
+    echo -e "  ${fg_purple}▸ 1${reset}  🌐 MT管理器官方链接       ${fg_purple}▸ 5${reset} 🌐 面具类"
     echo -e "  ${fg_purple}▸ 2${reset}  🌐 Scene官方链接"
-    echo -e "  ${fg_purple}▸ 3${reset}  🌐 ksu官方链接"
-    echo -e "  ${fg_purple}▸ 4${reset}  🌐 Via浏览器官方链接"
-    echo -e "  ${fg_purple}▸ 5${reset}  🌐 殇痕画质助手官方链接"
+    echo -e "  ${fg_purple}▸ 3${reset}  🌐 Via浏览器官方链接"
+    echo -e "  ${fg_purple}▸ 4${reset}  🌐 殇痕画质助手官方链接"
     echo ""
-    echo -e "${fg_gray}  ─────────────────────────────────────────${reset}"
+    echo -e "${fg_gray}  ─────────────────────────────────────────────────────${reset}"
     echo -e "  ${fg_red}▸ 0${reset}  返回主菜单"
     echo ""
-    echo -e "${fg_gray}  ─────────────────────────────────────────${reset}"
+    echo -e "${fg_gray}  ─────────────────────────────────────────────────────${reset}"
     echo -ne "${fg_white}  编号：${reset}"
 }
 
-# 子菜单循环
+# ---------- 子菜单循环 ----------
 sub_menu_loop() {
     while true; do
         show_sub_menu
@@ -862,16 +1716,16 @@ sub_menu_loop() {
                 menu_open_browser_link "https://omarea.com/#/"
                 ;;
             3) 
-                log "【子菜单】用户选择: 3 - 打开KSU链接"
-                menu_open_browser_link "https://kernelsu.com/"
-                ;;
-            4) 
-                log "【子菜单】用户选择: 4 - 打开Via浏览器链接"
+                log "【子菜单】用户选择: 3 - 打开Via浏览器链接"
                 menu_open_browser_link "https://viayoo.com/zh-cn/"
                 ;;
-            5) 
-                log "【子菜单】用户选择: 5 - 打开Scene工具箱链接"
+            4) 
+                log "【子菜单】用户选择: 4 - 打开殇痕画质助手链接"
                 menu_open_browser_link "http://scartool.cn/"
+                ;;
+            5) 
+                log "【子菜单】用户选择: 5 - 进入ksu子菜单"
+                menu_ksu_sub
                 ;;
             0) 
                 log "【子菜单】用户选择: 0 - 返回主菜单"
@@ -888,11 +1742,9 @@ sub_menu_loop() {
     done
 }
 
-# ---------- 功能6：选项六（子进程） ----------
+# ---------- 功能6：批量创建 ----------
 menu_option6() {
-    # 使用子进程执行，避免阻塞主菜单
     (
-        # 确保子进程有独立的终端控制
         exec </dev/tty >/dev/tty 2>/dev/tty
         
         while true; do
@@ -1212,7 +2064,6 @@ EOF
         done
     ) < /dev/tty > /dev/tty 2> /dev/tty
     
-    # 等待子进程完成，避免僵尸进程
     local child_pid=$!
     wait $child_pid 2>/dev/null
 }
@@ -1228,10 +2079,8 @@ func_0() {
 main() {
     trap 'echo -e "\n${fg_yellow}脚本被中断${reset}"; exit 1' INT TERM
     
-    # 执行卡密验证
     verify_license
 
-    # ---------- 新增：启动时自动检测更新 ----------
     echo -e "${fg_gray}  ─────────────────────────────────────────${reset}"
     check_update "$GITHUB_RAW_URL" "$VERSION"
     local update_status=$?
@@ -1270,9 +2119,7 @@ main() {
         sleep 1
     fi
     echo -e "${fg_gray}  ─────────────────────────────────────────${reset}"
-    # ---------- 自动检测更新结束 ----------
 
-    # 主循环
     while true; do
         draw_menu
         read choice
@@ -1292,5 +2139,4 @@ main() {
     done
 }
 
-# 启动脚本
 main "$@"
